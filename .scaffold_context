@@ -1,0 +1,716 @@
+# Scaffold Context — Generated File Contents
+
+These files are pre-generated. Do NOT Read them — their contents are below.
+EXCEPTION: DashboardOverview.tsx is NOT included here. You MUST Read it with the Read tool before Write.
+Your job: Analyze data (1-2 sentences), Edit Layout.tsx (title), Read then Write DashboardOverview.tsx (once), Deploy.
+index.css is pre-generated with the shared design system. Do NOT edit it.
+src/config/ai-features.ts is editable — set AI_PHOTO_SCAN['Entity'] = true to enable photo scan in dialogs.
+NEVER use Bash cat/echo/heredoc for file operations — always use Read/Write/Edit tools.
+
+Generated 23 scaffold files:
+  - src/App.tsx
+  - src/components/Layout.tsx
+  - src/components/PageShell.tsx
+  - src/pages/DashboardOverview.tsx
+  - src/components/ConfirmDialog.tsx
+  - src/components/StatCard.tsx
+  - src/index.css
+  - src/lib/ai.ts
+  - src/lib/chat-context.ts
+  - src/components/ChatWidget.tsx
+  - src/config/ai-features.ts
+  - src/lib/formatters.ts
+  - src/hooks/useDashboardData.ts
+  - src/types/enriched.ts
+  - src/lib/enrich.ts
+  - src/pages/VerkaeuferPage.tsx
+  - src/components/dialogs/VerkaeuferDialog.tsx
+  - src/pages/ArtikelPage.tsx
+  - src/components/dialogs/ArtikelDialog.tsx
+  - src/pages/KaeuferPage.tsx
+  - src/components/dialogs/KaeuferDialog.tsx
+  - src/pages/VerkaeufePage.tsx
+  - src/components/dialogs/VerkaeufeDialog.tsx
+
+## src/types/app.ts
+```
+// AUTOMATICALLY GENERATED TYPES - DO NOT EDIT
+
+export interface Verkaeufer {
+  record_id: string;
+  createdat: string;
+  updatedat: string | null;
+  fields: {
+    verkaeufernummer?: string;
+    vorname?: string;
+    nachname?: string;
+    telefon?: string;
+    email?: string;
+    registrierungsdatum?: string; // Format: YYYY-MM-DD oder ISO String
+    notizen?: string;
+  };
+}
+
+export interface Artikel {
+  record_id: string;
+  createdat: string;
+  updatedat: string | null;
+  fields: {
+    artikelnummer?: string;
+    verkaeufer?: string; // applookup -> URL zu 'Verkaeufer' Record
+    artikelname?: string;
+    beschreibung?: string;
+    kategorie?: 'moebel' | 'kleidung' | 'buecher' | 'elektronik' | 'spielzeug' | 'haushaltswaren' | 'dekoration' | 'schmuck' | 'sport_freizeit' | 'sonstiges';
+    zustand?: 'neu' | 'wie_neu' | 'sehr_gut' | 'gut' | 'akzeptabel' | 'defekt';
+    preis?: number;
+    verfuegbar?: boolean;
+    foto?: string;
+  };
+}
+
+export interface Kaeufer {
+  record_id: string;
+  createdat: string;
+  updatedat: string | null;
+  fields: {
+    vorname?: string;
+    nachname?: string;
+    telefon?: string;
+    email?: string;
+    registrierungsdatum?: string; // Format: YYYY-MM-DD oder ISO String
+  };
+}
+
+export interface Verkaeufe {
+  record_id: string;
+  createdat: string;
+  updatedat: string | null;
+  fields: {
+    artikel?: string; // applookup -> URL zu 'Artikel' Record
+    verkaufspreis?: number;
+    verkaufsdatum?: string; // Format: YYYY-MM-DD oder ISO String
+    kaeufer?: string; // applookup -> URL zu 'Kaeufer' Record
+    zahlungsmethode?: 'bargeld' | 'ec_karte' | 'kreditkarte' | 'paypal' | 'ueberweisung' | 'sonstiges';
+    notizen?: string;
+  };
+}
+
+export const APP_IDS = {
+  VERKAEUFER: '69a8092b20ac86ce582be530',
+  ARTIKEL: '69a8093d0a4bccc713ac989f',
+  KAEUFER: '69a809430561a2e4c5582870',
+  VERKAEUFE: '69a80947443cc7b45049f88c',
+} as const;
+
+// Helper Types for creating new records
+export type CreateVerkaeufer = Verkaeufer['fields'];
+export type CreateArtikel = Artikel['fields'];
+export type CreateKaeufer = Kaeufer['fields'];
+export type CreateVerkaeufe = Verkaeufe['fields'];
+```
+
+## src/services/livingAppsService.ts
+```
+// AUTOMATICALLY GENERATED SERVICE
+import { APP_IDS } from '@/types/app';
+import type { Verkaeufer, Artikel, Kaeufer, Verkaeufe } from '@/types/app';
+
+// Base Configuration
+const API_BASE_URL = 'https://ci04.ci.xist4c.de/rest';
+
+// --- HELPER FUNCTIONS ---
+export function extractRecordId(url: string | null | undefined): string | null {
+  if (!url) return null;
+  // Extrahiere die letzten 24 Hex-Zeichen mit Regex
+  const match = url.match(/([a-f0-9]{24})$/i);
+  return match ? match[1] : null;
+}
+
+export function createRecordUrl(appId: string, recordId: string): string {
+  return `https://ci04.ci.xist4c.de/rest/apps/${appId}/records/${recordId}`;
+}
+
+async function callApi(method: string, endpoint: string, data?: any) {
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',  // Nutze Session Cookies für Auth
+    body: data ? JSON.stringify(data) : undefined
+  });
+  if (!response.ok) throw new Error(await response.text());
+  // DELETE returns often empty body or simple status
+  if (method === 'DELETE') return true;
+  return response.json();
+}
+
+export class LivingAppsService {
+  // --- VERKAEUFER ---
+  static async getVerkaeufer(): Promise<Verkaeufer[]> {
+    const data = await callApi('GET', `/apps/${APP_IDS.VERKAEUFER}/records`);
+    return Object.entries(data).map(([id, rec]: [string, any]) => ({
+      record_id: id, ...rec
+    }));
+  }
+  static async getVerkaeuferEntry(id: string): Promise<Verkaeufer | undefined> {
+    const data = await callApi('GET', `/apps/${APP_IDS.VERKAEUFER}/records/${id}`);
+    return { record_id: data.id, ...data };
+  }
+  static async createVerkaeuferEntry(fields: Verkaeufer['fields']) {
+    return callApi('POST', `/apps/${APP_IDS.VERKAEUFER}/records`, { fields });
+  }
+  static async updateVerkaeuferEntry(id: string, fields: Partial<Verkaeufer['fields']>) {
+    return callApi('PATCH', `/apps/${APP_IDS.VERKAEUFER}/records/${id}`, { fields });
+  }
+  static async deleteVerkaeuferEntry(id: string) {
+    return callApi('DELETE', `/apps/${APP_IDS.VERKAEUFER}/records/${id}`);
+  }
+
+  // --- ARTIKEL ---
+  static async getArtikel(): Promise<Artikel[]> {
+    const data = await callApi('GET', `/apps/${APP_IDS.ARTIKEL}/records`);
+    return Object.entries(data).map(([id, rec]: [string, any]) => ({
+      record_id: id, ...rec
+    }));
+  }
+  static async getArtikelEntry(id: string): Promise<Artikel | undefined> {
+    const data = await callApi('GET', `/apps/${APP_IDS.ARTIKEL}/records/${id}`);
+    return { record_id: data.id, ...data };
+  }
+  static async createArtikelEntry(fields: Artikel['fields']) {
+    return callApi('POST', `/apps/${APP_IDS.ARTIKEL}/records`, { fields });
+  }
+  static async updateArtikelEntry(id: string, fields: Partial<Artikel['fields']>) {
+    return callApi('PATCH', `/apps/${APP_IDS.ARTIKEL}/records/${id}`, { fields });
+  }
+  static async deleteArtikelEntry(id: string) {
+    return callApi('DELETE', `/apps/${APP_IDS.ARTIKEL}/records/${id}`);
+  }
+
+  // --- KAEUFER ---
+  static async getKaeufer(): Promise<Kaeufer[]> {
+    const data = await callApi('GET', `/apps/${APP_IDS.KAEUFER}/records`);
+    return Object.entries(data).map(([id, rec]: [string, any]) => ({
+      record_id: id, ...rec
+    }));
+  }
+  static async getKaeuferEntry(id: string): Promise<Kaeufer | undefined> {
+    const data = await callApi('GET', `/apps/${APP_IDS.KAEUFER}/records/${id}`);
+    return { record_id: data.id, ...data };
+  }
+  static async createKaeuferEntry(fields: Kaeufer['fields']) {
+    return callApi('POST', `/apps/${APP_IDS.KAEUFER}/records`, { fields });
+  }
+  static async updateKaeuferEntry(id: string, fields: Partial<Kaeufer['fields']>) {
+    return callApi('PATCH', `/apps/${APP_IDS.KAEUFER}/records/${id}`, { fields });
+  }
+  static async deleteKaeuferEntry(id: string) {
+    return callApi('DELETE', `/apps/${APP_IDS.KAEUFER}/records/${id}`);
+  }
+
+  // --- VERKAEUFE ---
+  static async getVerkaeufe(): Promise<Verkaeufe[]> {
+    const data = await callApi('GET', `/apps/${APP_IDS.VERKAEUFE}/records`);
+    return Object.entries(data).map(([id, rec]: [string, any]) => ({
+      record_id: id, ...rec
+    }));
+  }
+  static async getVerkaeufeEntry(id: string): Promise<Verkaeufe | undefined> {
+    const data = await callApi('GET', `/apps/${APP_IDS.VERKAEUFE}/records/${id}`);
+    return { record_id: data.id, ...data };
+  }
+  static async createVerkaeufeEntry(fields: Verkaeufe['fields']) {
+    return callApi('POST', `/apps/${APP_IDS.VERKAEUFE}/records`, { fields });
+  }
+  static async updateVerkaeufeEntry(id: string, fields: Partial<Verkaeufe['fields']>) {
+    return callApi('PATCH', `/apps/${APP_IDS.VERKAEUFE}/records/${id}`, { fields });
+  }
+  static async deleteVerkaeufeEntry(id: string) {
+    return callApi('DELETE', `/apps/${APP_IDS.VERKAEUFE}/records/${id}`);
+  }
+
+}
+```
+
+## src/App.tsx
+```
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Layout } from '@/components/Layout';
+import DashboardOverview from '@/pages/DashboardOverview';
+import VerkaeuferPage from '@/pages/VerkaeuferPage';
+import ArtikelPage from '@/pages/ArtikelPage';
+import KaeuferPage from '@/pages/KaeuferPage';
+import VerkaeufePage from '@/pages/VerkaeufePage';
+
+export default function App() {
+  return (
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route index element={<DashboardOverview />} />
+          <Route path="verkaeufer" element={<VerkaeuferPage />} />
+          <Route path="artikel" element={<ArtikelPage />} />
+          <Route path="kaeufer" element={<KaeuferPage />} />
+          <Route path="verkaeufe" element={<VerkaeufePage />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
+  );
+}
+```
+
+## src/components/Layout.tsx
+```
+import { NavLink, Outlet } from 'react-router-dom';
+import { FileText, LayoutDashboard, Menu, Package, X } from 'lucide-react';
+import { useState } from 'react';
+import ChatWidget from '@/components/ChatWidget';
+
+// ⚡ Customize these for your app
+const APP_TITLE = 'Dashboard';
+const APP_SUBTITLE = 'Verwaltung';
+
+const navigation = [
+  { name: 'Übersicht', href: '/', icon: LayoutDashboard },
+  { name: 'Verkäufer', href: '/verkaeufer', icon: FileText },
+  { name: 'Artikel', href: '/artikel', icon: Package },
+  { name: 'Käufer', href: '/kaeufer', icon: FileText },
+  { name: 'Verkäufe', href: '/verkaeufe', icon: FileText },
+];
+
+export function Layout() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  return (
+    <div className="min-h-screen bg-background">
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <aside
+        className={`
+          fixed top-0 left-0 z-50 h-full w-64 bg-sidebar border-r border-sidebar-border
+          transform transition-transform duration-200 ease-in-out
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+          lg:translate-x-0
+        `}
+      >
+        <div className="flex items-center justify-between px-5 py-6 border-b border-sidebar-border">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-sidebar-primary flex items-center justify-center shadow-sm">
+              <FileText size={16} className="text-sidebar-primary-foreground" />
+            </div>
+            <div>
+              <h1 className="text-sm font-bold tracking-tight text-sidebar-foreground">{APP_TITLE}</h1>
+              <p className="text-xs text-sidebar-foreground/60">{APP_SUBTITLE}</p>
+            </div>
+          </div>
+          <button
+            className="lg:hidden p-1.5 rounded-lg text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <X size={16} />
+          </button>
+        </div>
+        <nav className="px-3 pt-4 space-y-0.5">
+          <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-widest text-sidebar-foreground/40">
+            Navigation
+          </p>
+          {navigation.map(item => (
+            <NavLink
+              key={item.href}
+              to={item.href}
+              end={item.href === '/'}
+              onClick={() => setSidebarOpen(false)}
+              className={({ isActive }: { isActive: boolean }) =>
+                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
+                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                }`
+              }
+            >
+              <item.icon size={16} className="shrink-0" />
+              {item.name}
+            </NavLink>
+          ))}
+        </nav>
+      </aside>
+
+      <div className="lg:pl-64">
+        <header className="lg:hidden flex items-center gap-4 px-4 py-3 border-b bg-card sticky top-0 z-30">
+          <button
+            className="p-2 rounded-lg hover:bg-accent transition-colors"
+            onClick={() => setSidebarOpen(true)}
+          >
+            <Menu size={18} />
+          </button>
+          <span className="font-semibold text-sm">{APP_TITLE}</span>
+        </header>
+        <main className="p-6 lg:p-8 max-w-screen-2xl">
+          <Outlet />
+        </main>
+      </div>
+
+      <ChatWidget />
+    </div>
+  );
+}
+```
+
+## src/hooks/useDashboardData.ts
+```
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import type { Verkaeufer, Artikel, Kaeufer, Verkaeufe } from '@/types/app';
+import { LivingAppsService } from '@/services/livingAppsService';
+
+export function useDashboardData() {
+  const [verkaeufer, setVerkaeufer] = useState<Verkaeufer[]>([]);
+  const [artikel, setArtikel] = useState<Artikel[]>([]);
+  const [kaeufer, setKaeufer] = useState<Kaeufer[]>([]);
+  const [verkaeufe, setVerkaeufe] = useState<Verkaeufe[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetchAll = useCallback(async () => {
+    setError(null);
+    try {
+      const [verkaeuferData, artikelData, kaeuferData, verkaeufeData] = await Promise.all([
+        LivingAppsService.getVerkaeufer(),
+        LivingAppsService.getArtikel(),
+        LivingAppsService.getKaeufer(),
+        LivingAppsService.getVerkaeufe(),
+      ]);
+      setVerkaeufer(verkaeuferData);
+      setArtikel(artikelData);
+      setKaeufer(kaeuferData);
+      setVerkaeufe(verkaeufeData);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('Fehler beim Laden der Daten'));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  const verkaeuferMap = useMemo(() => {
+    const m = new Map<string, Verkaeufer>();
+    verkaeufer.forEach(r => m.set(r.record_id, r));
+    return m;
+  }, [verkaeufer]);
+
+  const artikelMap = useMemo(() => {
+    const m = new Map<string, Artikel>();
+    artikel.forEach(r => m.set(r.record_id, r));
+    return m;
+  }, [artikel]);
+
+  const kaeuferMap = useMemo(() => {
+    const m = new Map<string, Kaeufer>();
+    kaeufer.forEach(r => m.set(r.record_id, r));
+    return m;
+  }, [kaeufer]);
+
+  return { verkaeufer, setVerkaeufer, artikel, setArtikel, kaeufer, setKaeufer, verkaeufe, setVerkaeufe, loading, error, fetchAll, verkaeuferMap, artikelMap, kaeuferMap };
+}
+```
+
+## src/types/enriched.ts
+```
+import type { Artikel, Verkaeufe } from './app';
+
+export type EnrichedArtikel = Artikel & {
+  verkaeuferName: string;
+};
+
+export type EnrichedVerkaeufe = Verkaeufe & {
+  artikelName: string;
+  kaeuferName: string;
+};
+
+```
+
+## src/lib/enrich.ts
+```
+import type { EnrichedArtikel, EnrichedVerkaeufe } from '@/types/enriched';
+import type { Artikel, Kaeufer, Verkaeufe, Verkaeufer } from '@/types/app';
+import { extractRecordId } from '@/services/livingAppsService';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function resolveDisplay(url: string | undefined, map: Map<string, any>, ...fields: string[]): string {
+  if (!url) return '';
+  const id = extractRecordId(url);
+  if (!id) return '';
+  const r = map.get(id);
+  if (!r) return '';
+  return fields.map(f => String(r.fields[f] ?? '')).join(' ').trim();
+}
+
+interface ArtikelMaps {
+  verkaeuferMap: Map<string, Verkaeufer>;
+}
+
+export function enrichArtikel(
+  artikel: Artikel[],
+  maps: ArtikelMaps
+): EnrichedArtikel[] {
+  return artikel.map(r => ({
+    ...r,
+    verkaeuferName: resolveDisplay(r.fields.verkaeufer, maps.verkaeuferMap, 'vorname', 'nachname'),
+  }));
+}
+
+interface VerkaeufeMaps {
+  artikelMap: Map<string, Artikel>;
+  kaeuferMap: Map<string, Kaeufer>;
+}
+
+export function enrichVerkaeufe(
+  verkaeufe: Verkaeufe[],
+  maps: VerkaeufeMaps
+): EnrichedVerkaeufe[] {
+  return verkaeufe.map(r => ({
+    ...r,
+    artikelName: resolveDisplay(r.fields.artikel, maps.artikelMap, 'artikelnummer'),
+    kaeuferName: resolveDisplay(r.fields.kaeufer, maps.kaeuferMap, 'vorname', 'nachname'),
+  }));
+}
+
+```
+
+## src/lib/formatters.ts
+```
+import { format, parseISO } from 'date-fns';
+import { de } from 'date-fns/locale';
+
+export function formatDate(s: string | undefined) {
+  if (!s) return '—';
+  try { return format(parseISO(s), 'dd.MM.yyyy', { locale: de }); } catch { return s; }
+}
+
+export function formatCurrency(v: number | undefined) {
+  if (v == null) return '—';
+  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(v);
+}
+```
+
+## src/lib/ai.ts
+```
+const AI_ENDPOINT = "https://ci04.ci.xist4c.de/litellm/v1/chat/completions";
+const AI_MODEL = "default";
+
+export type ChatMessage = {
+  role: "system" | "user" | "assistant";
+  content: string | Array<{ type: string; [key: string]: unknown }>;
+};
+
+type CompletionOptions = {
+  temperature?: number;
+  max_tokens?: number;
+  top_p?: number;
+  stop?: string[];
+  response_format?: { type: string };
+};
+
+export async function chatCompletion(
+  messages: ChatMessage[],
+  options: CompletionOptions = {}
+): Promise<string> {
+  const res = await fetch(AI_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ model: AI_MODEL, messages, ...options }),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`AI API ${res.status}: ${body}`);
+  }
+  const data = await res.json();
+  return data.choices[0].message.content;
+}
+
+export async function safeJsonCompletion<T = unknown>(
+  messages: ChatMessage[],
+  options: CompletionOptions = {}
+): Promise<T> {
+  const raw = await chatCompletion(messages, options);
+  const match = raw.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+  if (!match) throw new Error(`Expected JSON but got: ${raw.slice(0, 200)}`);
+  return JSON.parse(match[0]);
+}
+
+export async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (attempt === maxAttempts) throw err;
+      await new Promise((r) => setTimeout(r, 1000 * attempt));
+    }
+  }
+  throw new Error("unreachable");
+}
+
+// --- File encoding helpers ---
+
+export function fileToDataUri(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.readAsDataURL(file);
+  });
+}
+
+export async function urlToDataUri(url: string): Promise<string> {
+  const res = await fetch(url);
+  const blob = await res.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Failed to encode file"));
+    reader.readAsDataURL(blob);
+  });
+}
+
+// --- High-level AI features ---
+
+export async function classify(
+  text: string,
+  categories: string[]
+): Promise<{ category: string; confidence: number }> {
+  return safeJsonCompletion([
+    {
+      role: "system",
+      content: [
+        "You are a classifier. Respond ONLY with valid JSON, nothing else.",
+        'Output format: {"category": "<one of the allowed categories>", "confidence": <0-1>}',
+        `Allowed categories: ${JSON.stringify(categories)}`,
+      ].join("\n"),
+    },
+    { role: "user", content: text },
+  ], { temperature: 0 });
+}
+
+export async function extract<T = Record<string, unknown>>(
+  text: string,
+  schemaDescription: string
+): Promise<T> {
+  return safeJsonCompletion([
+    {
+      role: "system",
+      content: [
+        "You are a data extraction engine. Respond ONLY with valid JSON matching the requested schema.",
+        "If a field cannot be determined from the input, use null.",
+        `Schema:\n${schemaDescription}`,
+      ].join("\n"),
+    },
+    { role: "user", content: text },
+  ], { temperature: 0 });
+}
+
+export async function summarize(
+  text: string,
+  options: { maxSentences?: number; language?: string } = {}
+): Promise<string> {
+  const { maxSentences = 3, language } = options;
+  const instructions = [
+    `Summarize the following text in at most ${maxSentences} sentences.`,
+    "Be concise and preserve key facts.",
+  ];
+  if (language) instructions.push(`Write the summary in ${language}.`);
+  return chatCompletion([
+    { role: "system", content: instructions.join(" ") },
+    { role: "user", content: text },
+  ]);
+}
+
+export async function translate(
+  text: string,
+  targetLanguage: string,
+  sourceLanguage?: string
+): Promise<string> {
+  const from = sourceLanguage ? ` from ${sourceLanguage}` : "";
+  return chatCompletion([
+    {
+      role: "system",
+      content: `Translate the following text${from} to ${targetLanguage}. Output ONLY the translation, nothing else.`,
+    },
+    { role: "user", content: text },
+  ]);
+}
+
+export async function analyzeImage(imageDataUri: string, prompt: string): Promise<string> {
+  return chatCompletion([
+    {
+      role: "user",
+      content: [
+        { type: "text", text: prompt },
+        { type: "image_url", image_url: { url: imageDataUri } },
+      ],
+    },
+  ]);
+}
+
+export async function analyzeDocument(fileDataUri: string, prompt: string): Promise<string> {
+  return chatCompletion([
+    {
+      role: "user",
+      content: [
+        { type: "text", text: prompt },
+        { type: "file", file: { file_data: fileDataUri } },
+      ],
+    },
+  ]);
+}
+
+export async function extractFromPhoto<T = Record<string, unknown>>(
+  imageDataUri: string,
+  schemaDescription: string
+): Promise<T> {
+  return safeJsonCompletion([
+    {
+      role: "system",
+      content: [
+        "Extract structured data from the provided image.",
+        "Respond ONLY with valid JSON matching the schema.",
+        "Use null for any field that cannot be determined.",
+        `Schema:\n${schemaDescription}`,
+      ].join("\n"),
+    },
+    {
+      role: "user",
+      content: [
+        { type: "text", text: "Extract the data from this image." },
+        { type: "image_url", image_url: { url: imageDataUri } },
+      ],
+    },
+  ]);
+}
+
+```
+
+## src/lib/chat-context.ts
+```
+export const CHAT_SYSTEM_PROMPT = `Du bist ein hilfreicher Assistent für diese App.\n\nDie App verwaltet folgende Daten:\n- Verkäufer: Verkäufernummer, Vorname, Nachname, Telefonnummer, E-Mail-Adresse, Registrierungsdatum (Datum), Notizen\n- Artikel: Artikelnummer, Verkäufer (→ Verkäufer), Artikelbezeichnung, Beschreibung, Kategorie, Zustand, Preis (EUR) (Zahl), Verfügbar (ja/nein), Foto des Artikels\n- Käufer: Vorname, Nachname, Telefonnummer, E-Mail-Adresse, Registrierungsdatum (Datum)\n- Verkäufe: Verkaufter Artikel (→ Artikel), Verkaufspreis (EUR) (Zahl), Verkaufsdatum und -uhrzeit (Datum), Käufer (→ Käufer), Zahlungsmethode, Notizen\n\nDu kannst:\n- Fragen zur App und den Daten beantworten\n- Hochgeladene Bilder und Dokumente analysieren\n- Texte zusammenfassen oder übersetzen\n- Bei der Dateneingabe helfen\n\nAntworte kurz und präzise. Verwende die gleiche Sprache wie der Nutzer.`;
+
+```
+
+## src/config/ai-features.ts
+```
+/**
+ * AI feature toggles per entity.
+ * Set to true to show "Foto scannen" button in the create/edit dialog.
+ * The agent can change these values — all other AI files are pre-generated.
+ */
+
+export const AI_PHOTO_SCAN: Record<string, boolean> = {
+  Verkaeufer: true,
+  Artikel: true,
+  Kaeufer: true,
+  Verkaeufe: true,
+};
+```
